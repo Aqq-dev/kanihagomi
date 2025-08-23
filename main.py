@@ -100,9 +100,14 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     guild_channels = guild_channels_res.json()
     for ch in guild_channels:
         if ch.get("type") == 4 and ch.get("name") == copy_name:
-            await interaction.response.send_message(f"⚠️ 同名のコピーカテゴリ「{copy_name}」が既に存在します。", ephemeral=True)
+            # 一度だけ応答する
+            embed = discord.Embed(title="⚠️ カテゴリコピー中止", color=discord.Color.red())
+            embed.add_field(name="理由", value=f"同名のコピーカテゴリ「{copy_name}」が既に存在します。", inline=False)
+            embed.set_footer(text=f"実行者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
+    # カテゴリ作成
     payload = {
         "name": copy_name,
         "type": 4,
@@ -116,7 +121,7 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
 
     created = create_res.json()
 
-    # --- 成功メッセージを埋め込み形式で送信 ---
+    # --- 成功メッセージ埋め込み ---
     embed = discord.Embed(title="✅ カテゴリコピー成功", color=discord.Color.green())
     embed.add_field(name="元カテゴリ名", value=src.get("name"), inline=True)
     embed.add_field(name="コピーカテゴリ名", value=created.get("name"), inline=True)
@@ -223,4 +228,5 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
