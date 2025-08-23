@@ -387,7 +387,14 @@ async def on_message(message):
         return
 
     # 招待リンクチェック（文字列が招待リンクっぽい場合のみ処理）
-    if message.content.startswith(("https://discord.gg/", "https://discord.com/invite/")):
+    if message.content.startswith((
+        "https://discord.gg/",
+        "https://discord.com/invite/",
+        "https://discordapp.com/invite/",
+        "discordapp.com/invite/",
+        "discord.gg/",
+        "discord.gg/invite/"
+    )):
         try:
             invite = await bot.fetch_invite(message.content)
             await message.delete()
@@ -443,6 +450,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
