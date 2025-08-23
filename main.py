@@ -3,6 +3,7 @@ import json
 import threading
 from functools import wraps
 from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone, timedelta
 
 import discord
 from discord import app_commands
@@ -38,6 +39,15 @@ def is_admin():
         return wrapper
     return decorator
 
+#vend info
+LOG_CHANNEL_ID = 1408684167318863883
+
+PRODUCTS = {
+    "文字化け作れるサイト": "https://lingojam.com/GlitchTextGenerator",
+    "emoji大量サイト(ダウンロード可能)": "https://discords.com/emoji-list",
+    "Gmail無限作成サイト": "https://www.gmailnator.com/",
+    "YouTubeプレミアムアカウント無限作成方法": "https://ytpremiumforfreebykanishop.pages.dev/"
+}
 
 # ---------------- Discord API Request ----------------
 def discord_request(method: str, endpoint: str, data: str | None = None):
@@ -298,6 +308,68 @@ async def termsverify_button(interaction: discord.Interaction, role: discord.Rol
     except discord.errors.HTTPException as e:
         await interaction.followup.send(f"モーダル送信失敗: {e}", ephemeral=True)
 
+#vend
+class ProductSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label=name, description="0円", value=name)
+            for name in PRODUCTS.keys()
+        ]
+        super().__init__(placeholder="商品を選択してください", options=options, custom_id="product_select")
+
+    async def callback(self, interaction: discord.Interaction):
+        modal = QuantityModal(self.values[0])
+        await interaction.response.send_modal(modal)
+
+class QuantityModal(discord.ui.Modal, title="購入フォーム"):
+    quantity = discord.ui.TextInput(label="個数を入力してください (1のみ)", placeholder="1", max_length=1)
+
+    def __init__(self, product_name: str):
+        super().__init__(custom_id=f"modal_{product_name}")
+        self.product_name = product_name
+
+    async def on_submit(self, interaction: discord.Interaction):
+        qty = self.quantity.value
+        if qty != "1":
+            await interaction.response.send_message("無料自販機は1個までしか購入できません。", ephemeral=True)
+            return
+
+        JST = timezone(timedelta(hours=9))
+        now = datetime.now(JST).strftime("%y/%m/%d %H:%M:%S(JST)")
+
+        await interaction.response.send_message(f"こちらが商品リンクです:\n{PRODUCTS[self.product_name]}")
+
+        embed = discord.Embed(title="✅ 購入が完了しました", color=discord.Color.green())
+        embed.add_field(name="購入日", value=f"```{now}```", inline=False)
+        embed.add_field(
+            name="購入サーバー",
+            value=f"```{interaction.guild.name}\n({interaction.guild.id})```",
+            inline=False
+        )
+        embed.add_field(name="商品名", value=f"```{self.product_name}```", inline=False)
+        embed.add_field(name="購入数", value="```1個```", inline=True)
+        embed.add_field(name="支払金額", value="```0円```", inline=True)
+        await interaction.channel.send(embed=embed)
+
+        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            log_embed = discord.Embed(title="📝 購入実績", color=discord.Color.orange())
+            log_embed.add_field(name="購入者", value=interaction.user.mention, inline=False)
+            log_embed.add_field(name="個数", value="```1個```", inline=True)
+            log_embed.add_field(name="商品", value=f"```{self.product_name}```", inline=False)
+            await log_channel.send(embed=log_embed)
+
+class ProductView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(ProductSelect())
+
+@bot.tree.command(name="freevend-1", description="無料自販機を表示します")
+async def freevend(interaction: discord.Interaction):
+    embed = discord.Embed(title="🎁 無料自販機", description="以下から商品を選択してください", color=discord.Color.blurple())
+    for name in PRODUCTS.keys():
+        embed.add_field(name=name, value="```0円```", inline=False)
+    await interaction.response.send_message(embed=embed, view=ProductView())
 
 # ---------------- Status Update Task ----------------
 @tasks.loop(seconds=5)
@@ -308,7 +380,6 @@ async def update_status():
     activity = discord.Activity(name=status_text, type=discord.ActivityType.watching)
     await bot.change_presence(status=discord.Status.idle, activity=activity)
 
-
 # ---------------- On Ready ----------------
 @bot.event
 async def on_ready():
@@ -317,6 +388,7 @@ async def on_ready():
         for role in guild.roles:
             bot.add_view(VerifyView(role.id))
             bot.add_view(TermsVerifyView(role.id))
+            bot.add_view(ProductView())
     update_status.start()
     print(f"✅ ログインしました: {bot.user}")
 
@@ -329,4 +401,3 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
