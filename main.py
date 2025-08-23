@@ -386,44 +386,47 @@ async def on_message(message):
     if message.author.guild_permissions.administrator:
         return
 
-    # JSTタイムゾーン
     JST = timezone(timedelta(hours=9))
-
-    # 招待リンクチェック
-    if message.content.startswith((
+    
+    # 招待リンクチェック（文章中にリンクが含まれても検出）
+    invite_substrings = (
         "https://discord.gg/",
         "https://discord.com/invite/",
         "https://discordapp.com/invite/",
         "discordapp.com/invite/",
         "discord.gg/",
         "discord.gg/invite/"
-    )):
+    )
+    
+    if any(sub in message.content for sub in invite_substrings):
         try:
-            invite = await bot.fetch_invite(message.content)
             await message.delete()
-            until_time = datetime.now(JST) + timedelta(minutes=10)  # 10分後
+            until_time = datetime.now(JST) + timedelta(minutes=10)
             await message.author.timeout(until=until_time, reason="招待リンク送信")
             embed = discord.Embed(
-                title="---",
+                title="警告",
                 description=f"管理者ではないユーザーが Discord の招待リンクを送信しました。\n{message.author.mention} を 10 分間タイムアウトします。",
                 color=discord.Color.red()
             )
             await message.channel.send(embed=embed)
-        except (discord.NotFound, discord.HTTPException, ValueError):
+        except (discord.NotFound, discord.HTTPException):
             pass
         return
 
     # @everyone/@here チェック
     if message.mention_everyone:
-        await message.delete()
-        until_time = datetime.now(JST) + timedelta(minutes=10)  # 10分後
-        await message.author.timeout(until=until_time, reason="@everyone/@hereメンション送信")
-        embed = discord.Embed(
-            title="---",
-            description=f"管理者ではないユーザーが @everyone または @here を送信しました。\n{message.author.mention} を 10 分間タイムアウトします。",
-            color=discord.Color.red()
-        )
-        await message.channel.send(embed=embed)
+        try:
+            await message.delete()
+            until_time = datetime.now(JST) + timedelta(minutes=10)
+            await message.author.timeout(until=until_time, reason="@everyone/@hereメンション送信")
+            embed = discord.Embed(
+                title="警告",
+                description=f"管理者ではないユーザーが @everyone または @here を送信しました。\n{message.author.mention} を 10 分間タイムアウトします。",
+                color=discord.Color.red()
+            )
+            await message.channel.send(embed=embed)
+        except (discord.NotFound, discord.HTTPException):
+            pass
 
 # ---------------- Status Update Task ----------------
 @tasks.loop(seconds=5)
@@ -455,3 +458,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
