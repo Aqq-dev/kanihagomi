@@ -466,7 +466,7 @@ class MyBot(commands.Bot):
         self.loop.create_task(change_icon_task())
 
 # ---------------- Status Update Task ----------------
-@tasks.loop(seconds=5)
+@tasks.loop(seconds=20)
 async def update_status():
     total_members = sum(guild.member_count for guild in bot.guilds)
     latency_ms = round(bot.latency * 1000)
@@ -494,3 +494,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
