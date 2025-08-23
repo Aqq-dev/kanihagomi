@@ -75,18 +75,20 @@ async def role_add(interaction: discord.Interaction, user: discord.Member, role:
 @bot.tree.command(name="category-copy", description="指定したカテゴリをコピーします")
 @app_commands.describe(category="コピーするカテゴリ")
 async def category_copy_command(interaction: discord.Interaction, category: discord.CategoryChannel):
+    await interaction.response.defer(ephemeral=True)  # 先に defer して応答を保留
+
     guild_id = str(interaction.guild.id)
     source_category_id = str(category.id)
 
     # --- 元カテゴリ取得 ---
     src_res = discord_request("GET", f"/channels/{source_category_id}")
     if src_res.status_code != 200:
-        await interaction.response.send_message(f"カテゴリ情報取得エラー: {src_res.text}", ephemeral=True)
+        await interaction.followup.send(f"カテゴリ情報取得エラー: {src_res.text}", ephemeral=True)
         return
 
     src = src_res.json()
     if int(src.get("type", -1)) != 4:
-        await interaction.response.send_message("指定したチャンネルはカテゴリではありません。", ephemeral=True)
+        await interaction.followup.send("指定したチャンネルはカテゴリではありません。", ephemeral=True)
         return
 
     copy_name = f"{src.get('name', 'category')} (copy)"
@@ -94,16 +96,15 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     # --- 既存コピーチェック ---
     guild_channels_res = discord_request("GET", f"/guilds/{guild_id}/channels")
     if guild_channels_res.status_code != 200:
-        await interaction.response.send_message(f"サーバーチャンネル取得エラー: {guild_channels_res.text}", ephemeral=True)
+        await interaction.followup.send(f"サーバーチャンネル取得エラー: {guild_channels_res.text}", ephemeral=True)
         return
 
     guild_channels = guild_channels_res.json()
     if any(ch.get("type") == 4 and ch.get("name") == copy_name for ch in guild_channels):
-        # 一度だけ応答
         embed = discord.Embed(title="⚠️ コピー中止", color=discord.Color.red())
         embed.add_field(name="理由", value=f"同名のコピーカテゴリ「{copy_name}」が既に存在します。", inline=False)
         embed.set_footer(text=f"実行者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
     # --- カテゴリ作成 ---
@@ -115,7 +116,7 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
 
     create_res = discord_request("POST", f"/guilds/{guild_id}/channels", data=json.dumps(payload))
     if create_res.status_code not in (200, 201):
-        await interaction.response.send_message(f"カテゴリ作成エラー: {create_res.text}", ephemeral=True)
+        await interaction.followup.send(f"カテゴリ作成エラー: {create_res.text}", ephemeral=True)
         return
 
     created = create_res.json()
@@ -127,9 +128,7 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     embed.add_field(name="コピーカテゴリID", value=created.get("id"), inline=False)
     embed.set_footer(text=f"作成者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
 
-    # 一度だけ send_message
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-
+    await interaction.followup.send(embed=embed, ephemeral=True)
 # --- ban ---
 @bot.tree.command(name="ban", description="指定したユーザーをBANします（管理者限定）")
 @is_admin()
@@ -228,6 +227,3 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
