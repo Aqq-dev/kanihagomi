@@ -78,7 +78,7 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     guild_id = str(interaction.guild.id)
     source_category_id = str(category.id)
 
-    # 元カテゴリ情報を取得
+    # --- 元カテゴリ取得 ---
     src_res = discord_request("GET", f"/channels/{source_category_id}")
     if src_res.status_code != 200:
         await interaction.response.send_message(f"カテゴリ情報取得エラー: {src_res.text}", ephemeral=True)
@@ -91,23 +91,22 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
 
     copy_name = f"{src.get('name', 'category')} (copy)"
 
-    # 既に同名のカテゴリが存在するかチェック
+    # --- 既存コピーチェック ---
     guild_channels_res = discord_request("GET", f"/guilds/{guild_id}/channels")
     if guild_channels_res.status_code != 200:
         await interaction.response.send_message(f"サーバーチャンネル取得エラー: {guild_channels_res.text}", ephemeral=True)
         return
 
     guild_channels = guild_channels_res.json()
-    for ch in guild_channels:
-        if ch.get("type") == 4 and ch.get("name") == copy_name:
-            # 一度だけ応答する
-            embed = discord.Embed(title="⚠️ カテゴリコピー中止", color=discord.Color.red())
-            embed.add_field(name="理由", value=f"同名のコピーカテゴリ「{copy_name}」が既に存在します。", inline=False)
-            embed.set_footer(text=f"実行者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
+    if any(ch.get("type") == 4 and ch.get("name") == copy_name for ch in guild_channels):
+        # 一度だけ応答
+        embed = discord.Embed(title="⚠️ コピー中止", color=discord.Color.red())
+        embed.add_field(name="理由", value=f"同名のコピーカテゴリ「{copy_name}」が既に存在します。", inline=False)
+        embed.set_footer(text=f"実行者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
 
-    # カテゴリ作成
+    # --- カテゴリ作成 ---
     payload = {
         "name": copy_name,
         "type": 4,
@@ -128,6 +127,7 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     embed.add_field(name="コピーカテゴリID", value=created.get("id"), inline=False)
     embed.set_footer(text=f"作成者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
 
+    # 一度だけ send_message
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # --- ban ---
@@ -228,5 +228,6 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
