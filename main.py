@@ -16,79 +16,8 @@ from dotenv import load_dotenv
 # --- 環境変数ロード ---
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-API_BASE = "https://discord.com/api/v10"
-
 # --- Flask アプリ ---
 app = Flask(__name__)
-
-def discord_request(method: str, endpoint: str, data: str | None = None):
-    headers = {
-        "Authorization": f"Bot {DISCORD_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    url = f"{API_BASE}{endpoint}"
-    return requests.request(method, url, headers=headers, data=data)
-
-@app.route("/")
-def index():
-    return jsonify({"ok": True, "message": "Flask Discord Category Copier is running"})
-
-@app.route("/category-copy", methods=["POST"])
-def category_copy():
-    data = request.json or {}
-
-    guild_id = str(data.get("guild_id", "")).strip()
-    source_category_id = str(data.get("source_category_id", "")).strip()
-    new_category_name = data.get("new_category_name")
-    position = data.get("position")
-
-    if not guild_id or not source_category_id:
-        return jsonify({"ok": False, "error": "guild_id と source_category_id は必須です"}), 400
-
-    # 1) 元カテゴリ情報を取得
-    src_res = discord_request("GET", f"/channels/{source_category_id}")
-    if src_res.status_code != 200:
-        try:
-            err = src_res.json()
-        except Exception:
-            err = {"message": src_res.text}
-        return jsonify({"ok": False, "step": "fetch_source", "status": src_res.status_code, "error": err}), 400
-
-    src = src_res.json()
-
-    if int(src.get("type", -1)) != 4:
-        return jsonify({"ok": False, "error": "source_category_id はカテゴリ(type=4)ではありません"}), 400
-
-    # 2) 新しいカテゴリの作成
-    payload: Dict[str, Any] = {
-        "name": new_category_name or f"{src.get('name', 'category')} (copy)",
-        "type": 4,
-        "permission_overwrites": src.get("permission_overwrites", []),
-    }
-    if isinstance(position, int):
-        payload["position"] = position
-
-    create_res = discord_request("POST", f"/guilds/{guild_id}/channels", data=json.dumps(payload))
-    if create_res.status_code not in (200, 201):
-        try:
-            err2 = create_res.json()
-        except Exception:
-            err2 = {"message": create_res.text}
-        return jsonify({"ok": False, "step": "create_category", "status": create_res.status_code, "error": err2}), 400
-
-    created = create_res.json()
-
-    return jsonify({
-        "ok": True,
-        "guild_id": guild_id,
-        "source_category_id": source_category_id,
-        "created_category": {
-            "id": created.get("id"),
-            "name": created.get("name"),
-            "type": created.get("type"),
-            "position": created.get("position"),
-        }
-    }), 201
 
 # --- Discord Bot ---
 intents = discord.Intents.all()
@@ -127,6 +56,53 @@ async def role_add(interaction: discord.Interaction, user: discord.Member, role:
         await interaction.response.send_message("ロールの付与に失敗しました。", ephemeral=True)
     except Exception as e:
         await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
+
+@bot.tree.command(name="category-copy", description="指定したカテゴリをコピーします")
+@app_commands.describe(
+    category="コピーするカテゴリ"
+)
+async def category_copy_command(interaction: discord.Interaction, category: discord.CategoryChannel):
+    guild_id = str(interaction.guild.id)
+    source_category_id = str(category.id)
+
+    # 元カテゴリ情報を取得
+    src_res = discord_request("GET", f"/channels/{source_category_id}")
+    if src_res.status_code != 200:
+        try:
+            err = src_res.json()
+        except Exception:
+            err = {"message": src_res.text}
+        await interaction.response.send_message(f"カテゴリ情報取得エラー: {err}", ephemeral=True)
+        return
+
+    src = src_res.json()
+
+    if int(src.get("type", -1)) != 4:
+        await interaction.response.send_message("指定したチャンネルはカテゴリではありません。", ephemeral=True)
+        return
+
+    # 新しいカテゴリ作成
+    payload: Dict[str, Any] = {
+        "name": f"{src.get('name', 'category')} (copy)",
+        "type": 4,
+        "permission_overwrites": src.get("permission_overwrites", []),
+    }
+
+    create_res = discord_request("POST", f"/guilds/{guild_id}/channels", data=json.dumps(payload))
+    if create_res.status_code not in (200, 201):
+        try:
+            err2 = create_res.json()
+        except Exception:
+            err2 = {"message": create_res.text}
+        await interaction.response.send_message(f"カテゴリ作成エラー: {err2}", ephemeral=True)
+        return
+
+    created = create_res.json()
+
+    await interaction.response.send_message(
+        f"✅ カテゴリをコピーしました: {created.get('name')} ({created.get('id')})",
+        ephemeral=True
+    )
 
 # --- ban ---
 @bot.tree.command(name="ban", description="指定したユーザーをBANします（管理者限定）")
@@ -340,3 +316,4 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
     app.run(host="0.0.0.0", port=port, debug=True)
+
