@@ -1,6 +1,5 @@
 import os
 import json
-import io
 import threading
 from functools import wraps
 
@@ -8,9 +7,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ui import Modal, TextInput
-import aiohttp
+
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask
 from dotenv import load_dotenv
 
 # --- 環境変数ロード ---
@@ -75,7 +74,15 @@ async def role_add(interaction: discord.Interaction, user: discord.Member, role:
 @bot.tree.command(name="category-copy", description="指定したカテゴリをコピーします")
 @app_commands.describe(category="コピーするカテゴリ")
 async def category_copy_command(interaction: discord.Interaction, category: discord.CategoryChannel):
-    await interaction.response.defer(ephemeral=True)  # 先に defer して応答を保留
+    # --- defer安全処理 ---
+    try:
+        await interaction.response.defer(ephemeral=True)
+    except discord.errors.NotFound:
+        print("Interaction がすでに無効です")
+        return
+    except discord.errors.HTTPException:
+        # すでに defer/response 済み
+        pass
 
     guild_id = str(interaction.guild.id)
     source_category_id = str(category.id)
@@ -85,7 +92,6 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     if src_res.status_code != 200:
         await interaction.followup.send(f"カテゴリ情報取得エラー: {src_res.text}", ephemeral=True)
         return
-
     src = src_res.json()
     if int(src.get("type", -1)) != 4:
         await interaction.followup.send("指定したチャンネルはカテゴリではありません。", ephemeral=True)
@@ -93,12 +99,11 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
 
     copy_name = f"{src.get('name', 'category')} (copy)"
 
-    # --- 既存コピーチェック ---
+    # --- 同名コピー確認 ---
     guild_channels_res = discord_request("GET", f"/guilds/{guild_id}/channels")
     if guild_channels_res.status_code != 200:
         await interaction.followup.send(f"サーバーチャンネル取得エラー: {guild_channels_res.text}", ephemeral=True)
         return
-
     guild_channels = guild_channels_res.json()
     if any(ch.get("type") == 4 and ch.get("name") == copy_name for ch in guild_channels):
         embed = discord.Embed(title="⚠️ コピー中止", color=discord.Color.red())
@@ -113,12 +118,10 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
         "type": 4,
         "permission_overwrites": src.get("permission_overwrites", []),
     }
-
     create_res = discord_request("POST", f"/guilds/{guild_id}/channels", data=json.dumps(payload))
     if create_res.status_code not in (200, 201):
         await interaction.followup.send(f"カテゴリ作成エラー: {create_res.text}", ephemeral=True)
         return
-
     created = create_res.json()
 
     # --- 成功メッセージ埋め込み ---
@@ -127,8 +130,8 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     embed.add_field(name="コピーカテゴリ名", value=created.get("name"), inline=True)
     embed.add_field(name="コピーカテゴリID", value=created.get("id"), inline=False)
     embed.set_footer(text=f"作成者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
-
     await interaction.followup.send(embed=embed, ephemeral=True)
+
 # --- ban ---
 @bot.tree.command(name="ban", description="指定したユーザーをBANします（管理者限定）")
 @is_admin()
