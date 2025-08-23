@@ -337,19 +337,23 @@ class QuantityModal(discord.ui.Modal, title="購入フォーム"):
         JST = timezone(timedelta(hours=9))
         now = datetime.now(JST).strftime("%y/%m/%d %H:%M:%S(JST)")
 
-        await interaction.response.send_message(f"こちらが商品リンクです:\n{PRODUCTS[self.product_name]}")
+        try:
+            embed = discord.Embed(title="✅ 購入が完了しました", color=discord.Color.green())
+            embed.add_field(name="購入日", value=f"```{now}```", inline=False)
+            embed.add_field(
+                name="購入サーバー",
+                value=f"```{interaction.guild.name}\n({interaction.guild.id})```",
+                inline=False
+            )
+            embed.add_field(name="商品名", value=f"```{self.product_name}```", inline=False)
+            embed.add_field(name="購入数", value="```1個```", inline=True)
+            embed.add_field(name="支払金額", value="```0円```", inline=True)
 
-        embed = discord.Embed(title="✅ 購入が完了しました", color=discord.Color.green())
-        embed.add_field(name="購入日", value=f"```{now}```", inline=False)
-        embed.add_field(
-            name="購入サーバー",
-            value=f"```{interaction.guild.name}\n({interaction.guild.id})```",
-            inline=False
-        )
-        embed.add_field(name="商品名", value=f"```{self.product_name}```", inline=False)
-        embed.add_field(name="購入数", value="```1個```", inline=True)
-        embed.add_field(name="支払金額", value="```0円```", inline=True)
-        await interaction.channel.send(embed=embed)
+            await interaction.user.send(f"こちらが商品リンクです:\n{PRODUCTS[self.product_name]}")
+            await interaction.user.send(embed=embed)
+            await interaction.response.send_message("購入情報をDMに送信しました。", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message("DMを送信できませんでした。DMを開放してください。", ephemeral=True)
 
         log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
         if log_channel:
