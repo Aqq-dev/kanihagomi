@@ -24,6 +24,7 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
+# ---------------- Admin Check ----------------
 def is_admin():
     def decorator(func):
         @wraps(func)
@@ -38,6 +39,7 @@ def is_admin():
     return decorator
 
 
+# ---------------- Discord API Request ----------------
 def discord_request(method: str, endpoint: str, data: str | None = None):
     headers = {
         "Authorization": f"Bot {DISCORD_TOKEN}",
@@ -47,8 +49,7 @@ def discord_request(method: str, endpoint: str, data: str | None = None):
     return requests.request(method, url, headers=headers, data=data)
 
 
-# -------------------- Discord Commands --------------------
-
+# ---------------- Role Add ----------------
 @bot.tree.command(name="role-add", description="指定したユーザーに指定したロールを付与します")
 @app_commands.describe(user="ロールを付与するユーザー", role="付与するロール")
 async def role_add(interaction: discord.Interaction, user: discord.Member, role: discord.Role):
@@ -67,16 +68,13 @@ async def role_add(interaction: discord.Interaction, user: discord.Member, role:
         await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
 
 
-# --- Category Copy ---
+# ---------------- Category Copy ----------------
 @bot.tree.command(name="category-copy", description="指定したカテゴリをコピーします")
 @app_commands.describe(category="コピーするカテゴリ")
 async def category_copy_command(interaction: discord.Interaction, category: discord.CategoryChannel):
     try:
         await interaction.response.defer(ephemeral=True)
-    except discord.errors.NotFound:
-        print("Interaction がすでに無効です")
-        return
-    except discord.errors.HTTPException:
+    except (discord.errors.NotFound, discord.errors.HTTPException):
         pass
 
     guild_id = str(interaction.guild.id)
@@ -124,7 +122,7 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 
-# --- Ban/Kick ---
+# ---------------- Ban/Kick ----------------
 @bot.tree.command(name="ban", description="指定したユーザーをBANします（管理者限定）")
 @is_admin()
 @app_commands.describe(user="BANするユーザー", reason="BANの理由（任意）")
@@ -153,7 +151,7 @@ async def kick_user(interaction: discord.Interaction, user: discord.Member, reas
         await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
 
 
-# --- Embed Modal ---
+# ---------------- Embed Modal ----------------
 class EmbedModal(Modal, title="埋め込みメッセージ作成"):
     title_input = TextInput(label="タイトル", placeholder="埋め込みに表示されるタイトル", max_length=256, required=False)
     description_input = TextInput(label="説明", style=discord.TextStyle.paragraph, placeholder="埋め込みに表示される説明", max_length=2000)
@@ -173,7 +171,7 @@ async def embed_command(interaction: discord.Interaction):
     await interaction.response.send_modal(EmbedModal())
 
 
-# --- Verify Button ---
+# ---------------- Verify Button ----------------
 class VerifyButton(Button):
     def __init__(self, role_id: int):
         super().__init__(style=discord.ButtonStyle.success, label="✅ 認証/Verify", custom_id=f"verify_{role_id}")
@@ -189,14 +187,14 @@ class VerifyButton(Button):
         if role >= guild.me.top_role:
             await interaction.response.send_message("Botの権限が不足しています。", ephemeral=True)
             return
-        try:
-            if role in member.roles:
-                await interaction.response.send_message("すでに認証済みです。", ephemeral=True)
-            else:
+        if role in member.roles:
+            await interaction.response.send_message("すでに認証済みです。", ephemeral=True)
+        else:
+            try:
                 await member.add_roles(role)
                 await interaction.response.send_message("認証が完了しました！", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.response.send_message("権限が不足しており、ロールを付与できません。", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.response.send_message("権限が不足しており、ロールを付与できません。", ephemeral=True)
 
 
 class VerifyView(View):
@@ -219,7 +217,7 @@ async def verify(interaction: discord.Interaction, role: discord.Role, descripti
     bot.add_view(view)
 
 
-# --- Terms Verify ---
+# ---------------- Terms Verify ----------------
 class TermsVerifyButton(Button):
     def __init__(self, role_id: int):
         super().__init__(label="同意", style=discord.ButtonStyle.success, custom_id=f"terms_verify_button_{role_id}")
@@ -228,21 +226,19 @@ class TermsVerifyButton(Button):
     async def callback(self, interaction: discord.Interaction):
         role = discord.utils.get(interaction.guild.roles, id=self.role_id)
         if not role:
-            embed = discord.Embed(description="ロールが見つかりませんでした。", color=discord.Color.red())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send("ロールが見つかりませんでした。", ephemeral=True)
             return
-
         if role >= interaction.guild.me.top_role:
-            await interaction.response.send_message("Botの権限が不足しています。", ephemeral=True)
+            await interaction.followup.send("Botの権限が不足しています。", ephemeral=True)
             return
-
         if role in interaction.user.roles:
-            embed = discord.Embed(description="すでにロールが付与されています。", color=discord.Color.orange())
+            await interaction.followup.send("すでにロールが付与されています。", ephemeral=True)
         else:
-            await interaction.user.add_roles(role)
-            embed = discord.Embed(description=f"{role.mention} ロールが付与されました！", color=discord.Color.green())
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+            try:
+                await interaction.user.add_roles(role)
+                await interaction.followup.send(f"{role.mention} ロールが付与されました！", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.followup.send("Botの権限が不足しています。", ephemeral=True)
 
 
 class TermsVerifyView(View):
@@ -275,13 +271,13 @@ async def termsverify_button(interaction: discord.Interaction, role: discord.Rol
         return
 
     try:
-        # defer して Interaction を保持
-        await interaction.response.defer(ephemeral=True)
-        await interaction.followup.send_modal(TermsModal(role.id))
-    except discord.errors.NotFound:
-        await interaction.followup.send("Interaction が無効になったため、モーダルを送信できませんでした。", ephemeral=True)
+        # defer 不要、直接モーダル送信
+        await interaction.response.send_modal(TermsModal(role.id))
+    except discord.errors.HTTPException as e:
+        await interaction.followup.send(f"モーダル送信失敗: {e}", ephemeral=True)
 
-# --- Status Update Task ---
+
+# ---------------- Status Update Task ----------------
 @tasks.loop(seconds=5)
 async def update_status():
     total_members = sum(guild.member_count for guild in bot.guilds)
@@ -291,7 +287,7 @@ async def update_status():
     await bot.change_presence(status=discord.Status.idle, activity=activity)
 
 
-# --- On Ready ---
+# ---------------- On Ready ----------------
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -311,4 +307,3 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
