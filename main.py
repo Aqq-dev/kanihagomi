@@ -224,29 +224,30 @@ class TermsVerifyButton(Button):
         self.role_id = role_id
 
     async def callback(self, interaction: discord.Interaction):
+        # Interaction を ACK しておく
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+
         role = discord.utils.get(interaction.guild.roles, id=self.role_id)
         user = interaction.user
 
-        # まずロール存在チェック
         if not role:
-            await send_safe(interaction, "ロールが見つかりませんでした。")
+            await interaction.followup.send("ロールが見つかりませんでした。", ephemeral=True)
             return
 
-        # Bot 権限チェック
         if role >= interaction.guild.me.top_role:
-            await send_safe(interaction, "Botの権限が不足しています。")
+            await interaction.followup.send("Botの権限が不足しています。", ephemeral=True)
             return
 
-        # 既にロールを持っている場合
         if role in user.roles:
-            await send_safe(interaction, "すでにロールが付与されています。")
+            await interaction.followup.send("すでにロールが付与されています。", ephemeral=True)
             return
 
         try:
             await user.add_roles(role)
-            await send_safe(interaction, f"{role.mention} ロールが付与されました！")
+            await interaction.followup.send(f"{role.mention} ロールが付与されました！", ephemeral=True)
         except discord.Forbidden:
-            await send_safe(interaction, "Botの権限が不足しています。")
+            await interaction.followup.send("Botの権限が不足しています。", ephemeral=True)
 
 
 async def send_safe(interaction: discord.Interaction, content: str):
@@ -328,3 +329,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
