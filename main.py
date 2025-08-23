@@ -269,10 +269,17 @@ class TermsModal(Modal, title="利用規約入力"):
 @app_commands.describe(role="同意時に付与するロール")
 async def termsverify_button(interaction: discord.Interaction, role: discord.Role):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("このコマンドを使用するには管理者権限が必要です。", ephemeral=True)
+        await interaction.response.send_message(
+            "このコマンドを使用するには管理者権限が必要です。", ephemeral=True
+        )
         return
-    await interaction.response.send_modal(TermsModal(role.id))
 
+    try:
+        # defer して Interaction を保持
+        await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send_modal(TermsModal(role.id))
+    except discord.errors.NotFound:
+        await interaction.followup.send("Interaction が無効になったため、モーダルを送信できませんでした。", ephemeral=True)
 
 # --- Status Update Task ---
 @tasks.loop(seconds=5)
@@ -304,3 +311,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
