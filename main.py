@@ -26,6 +26,17 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
+INTERVAL = 90 * 60  
+
+icon_links = [
+    "https://i.postimg.cc/1XW16Zvb/863f5eb4a72ae8ad45ef503f5efdc088.jpg",
+    "https://i.postimg.cc/wj1gX782/a1c5ff8448717f42393e5ede5e103824.jpg",
+    "https://i.postimg.cc/tCRT8qWQ/bbd5572bd5b9d9bdbf717dc4f4c4a6db.jpg",
+    "https://i.postimg.cc/zfFv4syc/7b899e228e3cd46dc4cac922dab3e4fe.jpg"
+]
+
+icons = cycle(icon_links)
+
 # ---------------- Admin Check ----------------
 def is_admin():
     def decorator(func):
@@ -428,6 +439,22 @@ async def on_message(message):
             await message.channel.send(embed=embed)
         except (discord.NotFound, discord.HTTPException):
             pass
+#aa
+async def change_icon_task():
+    await bot.wait_until_ready()
+    session = aiohttp.ClientSession()
+    while not bot.is_closed():
+        url = next(icons)
+        try:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    img = await resp.read()
+                    await bot.user.edit(avatar=img)
+                    print(f"✅ アイコンを変更しました → {url}")
+        except Exception as e:
+            print(f"⚠️ アイコン変更エラー: {e}")
+        await asyncio.sleep(INTERVAL)
+
 # ---------------- Status Update Task ----------------
 @tasks.loop(seconds=5)
 async def update_status():
@@ -453,10 +480,9 @@ async def on_ready():
 def run_bot():
     bot.run(DISCORD_TOKEN)
 
+bot.loop.create_task(change_icon_task())
 
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
