@@ -41,6 +41,7 @@ def is_admin():
 
 #vend info
 LOG_CHANNEL_ID = 1408684167318863883
+GUILD_ID = 1371091483611893790
 
 PRODUCTS = {
     "文字化け作れるサイト": "https://lingojam.com/GlitchTextGenerator",
@@ -309,20 +310,8 @@ async def termsverify_button(interaction: discord.Interaction, role: discord.Rol
         await interaction.followup.send(f"モーダル送信失敗: {e}", ephemeral=True)
 
 #vend
-class ProductSelect(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label=name, description="0円", value=name)
-            for name in PRODUCTS.keys()
-        ]
-        super().__init__(placeholder="商品を選択してください", options=options, custom_id="product_select")
-
-    async def callback(self, interaction: discord.Interaction):
-        modal = QuantityModal(self.values[0])
-        await interaction.response.send_modal(modal)
-
-class QuantityModal(discord.ui.Modal, title="購入フォーム"):
-    quantity = discord.ui.TextInput(label="個数を入力してください (1のみ)", placeholder="1", max_length=1)
+class QuantityModal(Modal, title="購入フォーム"):
+    quantity = TextInput(label="個数を入力してください (1のみ)", placeholder="1", max_length=1)
 
     def __init__(self, product_name: str):
         super().__init__(custom_id=f"modal_{product_name}")
@@ -339,6 +328,7 @@ class QuantityModal(discord.ui.Modal, title="購入フォーム"):
 
         await interaction.response.send_message("購入情報をDMに送信しました。", ephemeral=True)
 
+        # DMに商品リンクと埋め込み
         try:
             await interaction.user.send(f"こちらが商品リンクです:\n{PRODUCTS[self.product_name]}")
 
@@ -352,15 +342,30 @@ class QuantityModal(discord.ui.Modal, title="購入フォーム"):
         except discord.Forbidden:
             await interaction.followup.send("DMを送信できませんでした。DMを開放してください。", ephemeral=True)
 
-        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
-        if log_channel:
-            log_embed = discord.Embed(title="📝 購入実績", color=discord.Color.orange())
-            log_embed.add_field(name="購入者", value=interaction.user.mention, inline=False)
-            log_embed.add_field(name="個数", value="```1個```", inline=True)
-            log_embed.add_field(name="商品", value=f"```{self.product_name}```", inline=False)
-            await log_channel.send(embed=log_embed)
+        # ログチャンネルに送信
+        guild = interaction.guild or bot.get_guild(GUILD_ID)
+        if guild:
+            log_channel = guild.get_channel(LOG_CHANNEL_ID)
+            if log_channel:
+                log_embed = discord.Embed(title="📝 購入実績", color=discord.Color.orange())
+                log_embed.add_field(name="購入者", value=interaction.user.mention, inline=False)
+                log_embed.add_field(name="個数", value="```1個```", inline=True)
+                log_embed.add_field(name="商品", value=f"```{self.product_name}```", inline=False)
+                await log_channel.send(embed=log_embed)
 
-class ProductView(discord.ui.View):
+class ProductSelect(Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label=name, description="0円", value=name)
+            for name in PRODUCTS.keys()
+        ]
+        super().__init__(placeholder="商品を選択してください", options=options, custom_id="product_select")
+
+    async def callback(self, interaction: discord.Interaction):
+        modal = QuantityModal(self.values[0])
+        await interaction.response.send_modal(modal)
+
+class ProductView(View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(ProductSelect())
@@ -402,5 +407,6 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
