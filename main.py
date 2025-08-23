@@ -445,18 +445,25 @@ async def on_message(message):
 #aa
 async def change_icon_task():
     await bot.wait_until_ready()
-    session = aiohttp.ClientSession()
-    while not bot.is_closed():
-        url = next(icons)
-        try:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    img = await resp.read()
-                    await bot.user.edit(avatar=img)
-                    print(f"✅ アイコンを変更しました → {url}")
-        except Exception as e:
-            print(f"⚠️ アイコン変更エラー: {e}")
-        await asyncio.sleep(INTERVAL)
+    async with aiohttp.ClientSession() as session:
+        while not bot.is_closed():
+            url = next(icons)
+            try:
+                async with session.get(url) as resp:
+                    if resp.status == 200:
+                        img = await resp.read()
+                        await bot.user.edit(avatar=img)
+                        print(f"✅ アイコンを変更しました → {url}")
+            except Exception as e:
+                print(f"⚠️ アイコン変更エラー: {e}")
+            await asyncio.sleep(INTERVAL)
+
+
+# --- Botクラスを拡張してsetup_hookを使う ---
+class MyBot(commands.Bot):
+    async def setup_hook(self):
+        # アイコン変更タスクを登録
+        self.loop.create_task(change_icon_task())
 
 # ---------------- Status Update Task ----------------
 @tasks.loop(seconds=5)
@@ -483,10 +490,7 @@ async def on_ready():
 def run_bot():
     bot.run(DISCORD_TOKEN)
 
-bot.loop.create_task(change_icon_task())
-
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
