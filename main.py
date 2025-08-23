@@ -57,10 +57,18 @@ async def role_add(interaction: discord.Interaction, user: discord.Member, role:
     except Exception as e:
         await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
 
+# --- Discord API リクエスト関数 ---
+def discord_request(method: str, endpoint: str, data: str | None = None):
+    headers = {
+        "Authorization": f"Bot {DISCORD_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    url = f"https://discord.com/api/v10{endpoint}"
+    return requests.request(method, url, headers=headers, data=data)
+
+# --- category-copy コマンド ---
 @bot.tree.command(name="category-copy", description="指定したカテゴリをコピーします")
-@app_commands.describe(
-    category="コピーするカテゴリ"
-)
+@app_commands.describe(category="コピーするカテゴリ")
 async def category_copy_command(interaction: discord.Interaction, category: discord.CategoryChannel):
     guild_id = str(interaction.guild.id)
     source_category_id = str(category.id)
@@ -68,21 +76,15 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
     # 元カテゴリ情報を取得
     src_res = discord_request("GET", f"/channels/{source_category_id}")
     if src_res.status_code != 200:
-        try:
-            err = src_res.json()
-        except Exception:
-            err = {"message": src_res.text}
-        await interaction.response.send_message(f"カテゴリ情報取得エラー: {err}", ephemeral=True)
+        await interaction.response.send_message(f"カテゴリ情報取得エラー: {src_res.text}", ephemeral=True)
         return
 
     src = src_res.json()
-
     if int(src.get("type", -1)) != 4:
         await interaction.response.send_message("指定したチャンネルはカテゴリではありません。", ephemeral=True)
         return
 
-    # 新しいカテゴリ作成
-    payload: Dict[str, Any] = {
+    payload = {
         "name": f"{src.get('name', 'category')} (copy)",
         "type": 4,
         "permission_overwrites": src.get("permission_overwrites", []),
@@ -90,15 +92,10 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
 
     create_res = discord_request("POST", f"/guilds/{guild_id}/channels", data=json.dumps(payload))
     if create_res.status_code not in (200, 201):
-        try:
-            err2 = create_res.json()
-        except Exception:
-            err2 = {"message": create_res.text}
-        await interaction.response.send_message(f"カテゴリ作成エラー: {err2}", ephemeral=True)
+        await interaction.response.send_message(f"カテゴリ作成エラー: {create_res.text}", ephemeral=True)
         return
 
     created = create_res.json()
-
     await interaction.response.send_message(
         f"✅ カテゴリをコピーしました: {created.get('name')} ({created.get('id')})",
         ephemeral=True
@@ -316,4 +313,5 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
