@@ -318,6 +318,9 @@ async def avatar(interaction: discord.Interaction, user: discord.User):
 @bot.event
 async def on_ready():
     await bot.tree.sync()
+    for guild in bot.guilds:
+        for role in guild.roles:
+            bot.add_view(VerifyView(role.id))
     print(f"✅ ログインしました: {bot.user}")
 
 # --- 実行 ---
@@ -335,4 +338,5 @@ if __name__ == "__main__":
 
     # Flask サーバー起動
     port = int(os.getenv("PORT", 5000))
+
     app.run(host="0.0.0.0", port=port, debug=True)
