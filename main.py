@@ -225,29 +225,41 @@ class TermsVerifyButton(Button):
 
     async def callback(self, interaction: discord.Interaction):
         role = discord.utils.get(interaction.guild.roles, id=self.role_id)
+        user = interaction.user
+
+        # まずロール存在チェック
         if not role:
-            await safe_send(interaction, "ロールが見つかりませんでした。")
+            await send_safe(interaction, "ロールが見つかりませんでした。")
             return
 
+        # Bot 権限チェック
         if role >= interaction.guild.me.top_role:
-            await safe_send(interaction, "Botの権限が不足しています。")
+            await send_safe(interaction, "Botの権限が不足しています。")
             return
 
-        if role in interaction.user.roles:
-            await safe_send(interaction, "すでにロールが付与されています。")
+        # 既にロールを持っている場合
+        if role in user.roles:
+            await send_safe(interaction, "すでにロールが付与されています。")
             return
 
         try:
-            await interaction.user.add_roles(role)
-            await safe_send(interaction, f"{role.mention} ロールが付与されました！")
+            await user.add_roles(role)
+            await send_safe(interaction, f"{role.mention} ロールが付与されました！")
         except discord.Forbidden:
-            await safe_send(interaction, "Botの権限が不足しています。")
+            await send_safe(interaction, "Botの権限が不足しています。")
 
-async def safe_send(interaction: discord.Interaction, content: str):
-    if not interaction.response.is_done():
-        await interaction.response.send_message(content, ephemeral=True)
-    else:
-        await interaction.followup.send(content, ephemeral=True)
+
+async def send_safe(interaction: discord.Interaction, content: str):
+    """
+    Interaction が無効になっても followup で送れるようにする
+    """
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.send_message(content, ephemeral=True)
+        else:
+            await interaction.followup.send(content, ephemeral=True)
+    except discord.errors.NotFound:
+        print(f"Interaction 無効: {content}")
 
 
 class TermsVerifyView(View):
@@ -316,5 +328,3 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
