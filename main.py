@@ -89,8 +89,22 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
         await interaction.response.send_message("指定したチャンネルはカテゴリではありません。", ephemeral=True)
         return
 
+    copy_name = f"{src.get('name', 'category')} (copy)"
+
+    # 既に同名のカテゴリが存在するかチェック
+    guild_channels_res = discord_request("GET", f"/guilds/{guild_id}/channels")
+    if guild_channels_res.status_code != 200:
+        await interaction.response.send_message(f"サーバーチャンネル取得エラー: {guild_channels_res.text}", ephemeral=True)
+        return
+
+    guild_channels = guild_channels_res.json()
+    for ch in guild_channels:
+        if ch.get("type") == 4 and ch.get("name") == copy_name:
+            await interaction.response.send_message(f"⚠️ 同名のコピーカテゴリ「{copy_name}」が既に存在します。", ephemeral=True)
+            return
+
     payload = {
-        "name": f"{src.get('name', 'category')} (copy)",
+        "name": copy_name,
         "type": 4,
         "permission_overwrites": src.get("permission_overwrites", []),
     }
@@ -101,7 +115,15 @@ async def category_copy_command(interaction: discord.Interaction, category: disc
         return
 
     created = create_res.json()
-    await interaction.response.send_message(f"✅ カテゴリをコピーしました: {created.get('name')} ({created.get('id')})", ephemeral=True)
+
+    # --- 成功メッセージを埋め込み形式で送信 ---
+    embed = discord.Embed(title="✅ カテゴリコピー成功", color=discord.Color.green())
+    embed.add_field(name="元カテゴリ名", value=src.get("name"), inline=True)
+    embed.add_field(name="コピーカテゴリ名", value=created.get("name"), inline=True)
+    embed.add_field(name="コピーカテゴリID", value=created.get("id"), inline=False)
+    embed.set_footer(text=f"作成者: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # --- ban ---
 @bot.tree.command(name="ban", description="指定したユーザーをBANします（管理者限定）")
@@ -201,3 +223,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
