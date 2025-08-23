@@ -4,12 +4,12 @@ import threading
 from functools import wraps
 from datetime import datetime, timedelta, timezone
 from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from discord.ui import Modal, TextInput, View, Button, Select
-
 
 import requests
 from flask import Flask
@@ -378,6 +378,47 @@ async def freevend(interaction: discord.Interaction):
         embed.add_field(name=name, value="```0円```", inline=False)
     await interaction.response.send_message(embed=embed, view=ProductView())
 
+#timeout
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    # 管理者は無視
+    if message.author.guild_permissions.administrator:
+        return
+
+    # ① 招待リンクチェック（メッセージそのものが Discord 招待リンクの場合）
+    try:
+        invite = await bot.fetch_invite(message.content)
+        await message.delete()
+        await message.author.timeout(duration=timedelta(minutes=10), reason="招待リンク送信")
+
+        embed = discord.Embed(
+            title="---",
+            description=f"管理者ではないユーザーが Discord の招待リンクを送信しました。\n{message.author.mention} を 10 分間タイムアウトします。",
+            color=discord.Color.red()
+        )
+        await message.channel.send(embed=embed)
+        return  # 招待リンク処理済みならここで終了
+
+    except discord.NotFound:
+        pass
+    except discord.HTTPException:
+        pass
+
+    # ② @everyone または @here のチェック
+    if message.mention_everyone:
+        await message.delete()
+        await message.author.timeout(duration=timedelta(minutes=10), reason="@everyone/@hereメンション送信")
+
+        embed = discord.Embed(
+            title="---",
+            description=f"管理者ではないユーザーが @everyone または @here を送信しました。\n{message.author.mention} を 10 分間タイムアウトします。",
+            color=discord.Color.red()
+        )
+        await message.channel.send(embed=embed)
+
 # ---------------- Status Update Task ----------------
 @tasks.loop(seconds=5)
 async def update_status():
@@ -408,6 +449,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
