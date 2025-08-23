@@ -219,6 +219,9 @@ async def verify(interaction: discord.Interaction, role: discord.Role, descripti
 @bot.event
 async def on_ready():
     await bot.tree.sync()
+    for guild in bot.guilds:
+        for role in guild.roles:
+            bot.add_view(VerifyView(role.id))
     print(f"✅ ログインしました: {bot.user}")
 
 # --- Bot 起動関数 ---
@@ -230,3 +233,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
