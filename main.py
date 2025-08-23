@@ -386,7 +386,10 @@ async def on_message(message):
     if message.author.guild_permissions.administrator:
         return
 
-    # 招待リンクチェック（文字列が招待リンクっぽい場合のみ処理）
+    # JSTタイムゾーン
+    JST = timezone(timedelta(hours=9))
+
+    # 招待リンクチェック
     if message.content.startswith((
         "https://discord.gg/",
         "https://discord.com/invite/",
@@ -398,7 +401,8 @@ async def on_message(message):
         try:
             invite = await bot.fetch_invite(message.content)
             await message.delete()
-            await message.author.timeout(duration=timedelta(minutes=10), reason="招待リンク送信")
+            until_time = datetime.now(JST) + timedelta(minutes=10)  # 10分後
+            await message.author.timeout(until=until_time, reason="招待リンク送信")
             embed = discord.Embed(
                 title="---",
                 description=f"管理者ではないユーザーが Discord の招待リンクを送信しました。\n{message.author.mention} を 10 分間タイムアウトします。",
@@ -406,13 +410,14 @@ async def on_message(message):
             )
             await message.channel.send(embed=embed)
         except (discord.NotFound, discord.HTTPException, ValueError):
-            pass  # 無効な招待リンクは無視
+            pass
         return
 
     # @everyone/@here チェック
     if message.mention_everyone:
         await message.delete()
-        await message.author.timeout(duration=timedelta(minutes=10), reason="@everyone/@hereメンション送信")
+        until_time = datetime.now(JST) + timedelta(minutes=10)  # 10分後
+        await message.author.timeout(until=until_time, reason="@everyone/@hereメンション送信")
         embed = discord.Embed(
             title="---",
             description=f"管理者ではないユーザーが @everyone または @here を送信しました。\n{message.author.mention} を 10 分間タイムアウトします。",
@@ -450,10 +455,3 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
-
-
-
-
