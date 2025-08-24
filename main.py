@@ -371,7 +371,7 @@ class QuantityModal(Modal, title="購入フォーム"):
 class ProductSelect(Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label=name, description="0円", value=name)
+            discord.SelectOption(label=name, description="価格: 0円 - 在庫数: ∞", value=name)
             for name in PRODUCTS.keys()
         ]
         super().__init__(placeholder="商品を選択してください", options=options, custom_id="product_select")
@@ -493,5 +493,6 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
