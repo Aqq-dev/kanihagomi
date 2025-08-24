@@ -442,7 +442,7 @@ async def on_message(message):
             await message.channel.send(embed=embed)
         except (discord.NotFound, discord.HTTPException):
             pass
-#aa
+ # --- アイコン変更タスク ---
 async def change_icon_task():
     await bot.wait_until_ready()
     async with aiohttp.ClientSession() as session:
@@ -459,11 +459,10 @@ async def change_icon_task():
             await asyncio.sleep(INTERVAL)
 
 
-# --- Botクラスを拡張してsetup_hookを使う ---
-class MyBot(commands.Bot):
-    async def setup_hook(self):
-        # アイコン変更タスクを登録
-        self.loop.create_task(change_icon_task())
+# --- setup_hook でタスク登録 ---
+@bot.event
+async def setup_hook():
+    bot.loop.create_task(change_icon_task())
 
 # ---------------- Status Update Task ----------------
 @tasks.loop(seconds=20)
@@ -494,4 +493,5 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
