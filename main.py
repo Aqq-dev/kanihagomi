@@ -387,10 +387,17 @@ class ProductView(View):
 
 @bot.tree.command(name="vending-create", description="無料自販機を設置します。")
 async def freevend(interaction: discord.Interaction):
-    embed = discord.Embed(title="<:ac_black_present:1409019019347886203> 無料自販機", description="以下から商品を選択してください", color=discord.Color.blurple())
+    await interaction.response.send_message("✅ 無料自販機を設置しました。", ephemeral=True)
+
+    embed = discord.Embed(
+        title="<:ac_black_present:1409019019347886203> 無料自販機",
+        description="以下から商品を選択してください",
+        color=discord.Color.blurple()
+    )
     for name in PRODUCTS.keys():
         embed.add_field(name=name, value="```0円```", inline=False)
-    await interaction.response.send_message(embed=embed, view=ProductView())
+
+    await interaction.channel.send(embed=embed, view=ProductView())
 
 #timeout
 @bot.event
@@ -493,6 +500,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
