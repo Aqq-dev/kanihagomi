@@ -387,7 +387,11 @@ class ProductView(View):
 
 @bot.tree.command(name="vending-create", description="無料自販機を設置します。")
 async def freevend(interaction: discord.Interaction):
-    await interaction.response.send_message("✅ 無料自販機を設置しました。", ephemeral=True)
+    # これで「考え中」の状態にする
+    await interaction.response.defer(ephemeral=True)
+
+    # その後ゆっくり処理
+    await interaction.followup.send("✅ 無料自販機を設置しました。")
 
     embed = discord.Embed(
         title="<:ac_black_present:1409019019347886203> 無料自販機",
@@ -500,6 +504,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
