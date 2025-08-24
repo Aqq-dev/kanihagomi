@@ -385,7 +385,7 @@ class ProductView(View):
         super().__init__(timeout=None)
         self.add_item(ProductSelect())
 
-@bot.tree.command(name="freevend-1", description="無料自販機を表示します")
+@bot.tree.command(name="vending-create", description="無料自販機を設置します。")
 async def freevend(interaction: discord.Interaction):
     embed = discord.Embed(title="<:ac_black_present:1409019019347886203> 無料自販機", description="以下から商品を選択してください", color=discord.Color.blurple())
     for name in PRODUCTS.keys():
@@ -493,6 +493,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
