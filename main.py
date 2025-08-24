@@ -326,7 +326,7 @@ async def termsverify_button(interaction: discord.Interaction, role: discord.Rol
 
 #vend
 class QuantityModal(Modal, title="購入フォーム"):
-    quantity = TextInput(label="個数を入力してください (1のみ)", placeholder="1", max_length=1)
+    quantity = TextInput(label="個数を入力してください", placeholder="例) 1", max_length=1)
 
     def __init__(self, product_name: str):
         super().__init__(custom_id=f"modal_{product_name}")
@@ -493,6 +493,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
