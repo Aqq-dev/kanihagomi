@@ -341,13 +341,13 @@ class QuantityModal(Modal, title="購入フォーム"):
         JST = timezone(timedelta(hours=9))
         now = datetime.now(JST).strftime("%y/%m/%d %H:%M:%S(JST)")
 
-        await interaction.response.send_message("購入情報をDMに送信しました。", ephemeral=True)
+        await interaction.response.send_message("<a:blue_check:1409015431452299365> 購入情報をDMに送信しました。", ephemeral=True)
 
         # DMに商品リンクと埋め込み
         try:
             await interaction.user.send(f"こちらが商品リンクです:\n{PRODUCTS[self.product_name]}")
 
-            embed = discord.Embed(title="✅ 購入が完了しました", color=discord.Color.green())
+            embed = discord.Embed(title="<a:blue_check:1409015431452299365> 購入が完了しました", color=discord.Color.green())
             embed.add_field(name="購入日", value=f"```{now}```", inline=False)
             embed.add_field(name="購入サーバー", value=f"```{interaction.guild.name}\n({interaction.guild.id})```", inline=False)
             embed.add_field(name="商品名", value=f"```{self.product_name}```", inline=False)
@@ -362,7 +362,7 @@ class QuantityModal(Modal, title="購入フォーム"):
         if guild:
             log_channel = guild.get_channel(LOG_CHANNEL_ID)
             if log_channel:
-                log_embed = discord.Embed(title="📝 購入実績", color=discord.Color.orange())
+                log_embed = discord.Embed(title="<a:Shop_thnks:1409018773020737596> 購入実績", color=discord.Color.orange())
                 log_embed.add_field(name="購入者", value=interaction.user.mention, inline=False)
                 log_embed.add_field(name="個数", value="```1個```", inline=True)
                 log_embed.add_field(name="商品", value=f"```{self.product_name}```", inline=False)
@@ -387,7 +387,7 @@ class ProductView(View):
 
 @bot.tree.command(name="freevend-1", description="無料自販機を表示します")
 async def freevend(interaction: discord.Interaction):
-    embed = discord.Embed(title="🎁 無料自販機", description="以下から商品を選択してください", color=discord.Color.blurple())
+    embed = discord.Embed(title="<:ac_black_present:1409019019347886203> 無料自販機", description="以下から商品を選択してください", color=discord.Color.blurple())
     for name in PRODUCTS.keys():
         embed.add_field(name=name, value="```0円```", inline=False)
     await interaction.response.send_message(embed=embed, view=ProductView())
@@ -493,6 +493,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
