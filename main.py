@@ -497,6 +497,7 @@ async def on_ready():
     update_status.start()
     print(f"✅ ログインしました: {bot.user}")
 
+keep_alive()
 
 def run_bot():
     bot.run(DISCORD_TOKEN)
@@ -505,4 +506,3 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
