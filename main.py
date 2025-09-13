@@ -17,6 +17,7 @@ from discord.ui import Modal, TextInput, View, Button, Select
 import requests
 from flask import Flask
 from dotenv import load_dotenv
+from keep_alive import keep_alive
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -504,3 +505,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
