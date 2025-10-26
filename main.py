@@ -33,10 +33,10 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 INTERVAL = 90 * 60  
 
 icon_links = [
-    "https://i.postimg.cc/1XW16Zvb/863f5eb4a72ae8ad45ef503f5efdc088.jpg",
-    "https://i.postimg.cc/wj1gX782/a1c5ff8448717f42393e5ede5e103824.jpg",
-    "https://i.postimg.cc/tCRT8qWQ/bbd5572bd5b9d9bdbf717dc4f4c4a6db.jpg",
-    "https://i.postimg.cc/zfFv4syc/7b899e228e3cd46dc4cac922dab3e4fe.jpg"
+    "https://i.pinimg.com/736x/09/bd/c6/09bdc6b02d8ef3c3f6920afccc607e7a.jpg",
+    "https://i.pinimg.com/1200x/4f/29/4d/4f294da400c845fddd6288b59ff608da.jpg",
+    "https://i.pinimg.com/originals/8d/1c/07/8d1c07eababc44c7a50572b00df87398.gif",
+    "https://i.pinimg.com/736x/dd/ca/2e/ddca2ec80f6a07c87c97c921126a835c.jpg"
 ]
 
 icons = cycle(icon_links)
@@ -483,7 +483,7 @@ async def update_status():
     latency_ms = round(bot.latency * 1000)
     status_text = f"{latency_ms}ms Ping | {total_members} Users"
     activity = discord.Activity(name=status_text, type=discord.ActivityType.watching)
-    await bot.change_presence(status=discord.Status.idle, activity=activity)
+    await bot.change_presence(status=discord.Status.online, activity=activity)
 
 # ---------------- On Ready ----------------
 @bot.event
@@ -506,3 +506,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
